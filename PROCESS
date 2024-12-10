@@ -1,0 +1,168 @@
+
+/*Import Libraries*/
+
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+from tensorflow.keras.preprocessing.image import img_to_array
+from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dropout, Dense
+import numpy as np
+import cv2
+import imutils
+import os
+
+/*Dataset Preparation and Augmentation*/
+
+
+# Define directories
+train_dir = "dataset/train"
+val_dir = "dataset/val"
+
+# Augmentation for training and validation
+train_datagen = ImageDataGenerator(
+    rescale=1.0/255,
+    rotation_range=20,
+    zoom_range=0.15,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.15,
+    horizontal_flip=True,
+    fill_mode="nearest"
+)
+
+val_datagen = ImageDataGenerator(rescale=1.0/255)
+
+# Generate datasets
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode="binary"
+)
+
+val_generator = val_datagen.flow_from_directory(
+    val_dir,
+    target_size=(150, 150),
+    batch_size=32,
+    class_mode="binary"
+)
+
+
+/*Model Building*/
+
+
+model = Sequential([
+    Conv2D(100, (3, 3), activation='relu', input_shape=(150, 150, 3)),
+    MaxPooling2D(2, 2),
+    Conv2D(100, (3, 3), activation='relu'),
+    MaxPooling2D(2, 2),
+    Flatten(),
+    Dropout(0.5),
+    Dense(50, activation='relu'),
+    Dense(1, activation='sigmoid')  # Use sigmoid for binary classification
+])
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+
+/*Model Training*/
+
+checkpoint_path = "model_checkpoint.h5"
+
+# Train the model
+history = model.fit(
+    train_generator,
+    steps_per_epoch=train_generator.samples // 32,
+    validation_data=val_generator,
+    validation_steps=val_generator.samples // 32,
+    epochs=30,
+    callbacks=[tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, save_best_only=True)]
+)
+
+
+/*Model Deployment*/
+/*Face Detection and Mask Classification*/
+
+# Load pre-trained models
+faceNet = cv2.dnn.readNet("deploy.prototxt", "res10_300x300_ssd_iter_140000.caffemodel")
+maskNet = load_model("mask_detector.model")
+
+# Face mask detection function
+def detect_and_predict_mask(frame, faceNet, maskNet):
+    (h, w) = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(frame, 1.0, (224, 224), (104.0, 177.0, 123.0))
+    faceNet.setInput(blob)
+    detections = faceNet.forward()
+
+    faces = []
+    locs = []
+    preds = []
+
+    for i in range(0, detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+        if confidence > 0.5:
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (startX, startY, endX, endY) = box.astype("int")
+            (startX, startY) = (max(0, startX), max(0, startY))
+            (endX, endY) = (min(w - 1, endX), min(h - 1, endY))
+
+            face = frame[startY:endY, startX:endX]
+            face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+            face = cv2.resize(face, (224, 224))
+            face = img_to_array(face)
+            face = preprocess_input(face)
+
+            faces.append(face)
+            locs.append((startX, startY, endX, endY))
+
+    if len(faces) > 0:
+        faces = np.array(faces, dtype="float32")
+        preds = maskNet.predict(faces, batch_size=32)
+
+    return (locs, preds)
+
+/*Webcam Integration for Real-Time Detection*/
+
+
+vs = cv2.VideoCapture(0)
+
+while True:
+    ret, frame = vs.read()
+    frame = imutils.resize(frame, width=400)
+
+    (locs, preds) = detect_and_predict_mask(frame, faceNet, maskNet)
+
+    for (box, pred) in zip(locs, preds):
+        (startX, startY, endX, endY) = box
+        (mask, withoutMask) = pred
+
+        label = "Mask" if mask > withoutMask else "No Mask"
+        color = (0, 255, 0) if label == "Mask" else (0, 0, 255)
+
+        label = f"{label}: {max(mask, withoutMask) * 100:.2f}%"
+        cv2.putText(frame, label, (startX, startY - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 2)
+        cv2.rectangle(frame, (startX, startY), (endX, endY), color, 2)
+
+    cv2.imshow("Frame", frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cv2.destroyAllWindows()
+vs.release()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
