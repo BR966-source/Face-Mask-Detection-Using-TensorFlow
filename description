@@ -1,0 +1,30 @@
+As an experienced candidate in computer vision and deep learning, I have successfully implemented a two-phase face mask detection system designed to identify individuals wearing face masks in real-time video streams. This project highlights my ability to manage end-to-end development pipelines, from data preprocessing to model deployment. Below are the key phases and my contributions:
+
+Phase 1: Training the Face Mask Detection Model
+Data Preparation and Augmentation:
+
+Processed a balanced dataset comprising 690 'with_mask' and 686 'without_mask' images.
+Enhanced the dataset using augmentation techniques (rotation and flipping) to increase size and diversity, resulting in 2,751 images (50.2% positive, 49.8% negative).
+Split the data into 80% training and 20% testing sets, ensuring robust model evaluation.
+Model Development:
+
+Built a Sequential CNN model in TensorFlow/Keras using layers such as Conv2D, MaxPooling2D, Flatten, Dropout, and Dense.
+Used the Adam optimizer and binary cross-entropy loss for efficient binary classification.
+Achieved a training accuracy of 98.86% and a testing accuracy of 96.19% after 30 epochs, ensuring the model's generalization capability without overfitting.
+Phase 2: Model Deployment
+Integration with OpenCV for Real-Time Detection:
+
+Developed a Python-based application using OpenCV to detect faces and classify them as 'with_mask' or 'without_mask' using a webcam.
+Employed a pre-trained Haar Cascade Classifier for face detection and a custom-trained TensorFlow model for classification.
+Designed a user-friendly interface displaying bounding boxes with labels and confidence levels, dynamically adjusting for detected faces.
+Performance Optimization:
+
+Implemented batch predictions to enhance inference speed for real-time applications.
+Ensured robust bounding box placement and real-time feedback with smooth frame processing.
+Technical Skills Demonstrated:
+Tools and Frameworks: TensorFlow, Keras, OpenCV, Numpy, and imutils.
+Data Handling: Image preprocessing, augmentation, and training-validation splitting.
+Model Training: Fine-tuning CNN architectures for real-time applications.
+Deployment: Integration of trained models into a real-time video stream environment.
+This project not only refined my expertise in computer vision and deep learning but also demonstrated my ability to translate theoretical knowledge into practical applications with societal relevance. It has equipped me with the skills necessary to contribute effectively as an intern in a challenging technical environment.
+
